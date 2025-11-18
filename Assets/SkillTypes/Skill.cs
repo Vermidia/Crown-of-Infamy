@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 public class Skill
 {
@@ -8,7 +9,7 @@ public class Skill
 
     public string id;
 
-    public int turnCooldown = 0;
+    public int roundCooldown = 0;
 
     public int currentCooldown = 0;
 
@@ -16,6 +17,8 @@ public class Skill
 
     //Default is single enemy
     public TargetingType targeting = TargetingType.Enemy;
+
+    public List<string> tags = new(); //For AI
 
     // Group and Allies are mostly for readability, and don't mean anything really
     [Flags]
@@ -45,5 +48,46 @@ public class Skill
         }
 
         animator.Play(animation);
+    }
+
+/// <summary>
+/// Returns true if all possible targets are guaranteed targets (for group moves or self targeting moves)
+/// </summary>
+/// <param name="user"></param>
+/// <param name="enemies"></param>
+/// <param name="allies"></param>
+/// <param name="FinalTargets"></param>
+/// <returns></returns>
+    public bool DoTargeting(Combantant user, List<Combantant> enemies, List<Combantant> allies, out List<Combantant> possibleTargets)
+    {
+        possibleTargets = new();
+        //Can only target self
+        if ((targeting ^ TargetingType.IncludeSelf) == 0)
+        {
+            possibleTargets.Add(user);
+            return true;
+        }
+        else if(targeting.HasFlag(TargetingType.IncludeSelf))
+        {
+            possibleTargets.Add(user);
+        }
+
+        if(targeting.HasFlag(TargetingType.Ally))
+            possibleTargets.AddRange(allies);
+
+        if(targeting.HasFlag(TargetingType.Enemy))
+            possibleTargets.AddRange(enemies);
+
+        if(targeting.HasFlag(TargetingType.Group))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public virtual void Resolve(Combantant user, List<Combantant> effected)
+    {
+        
     }
 }

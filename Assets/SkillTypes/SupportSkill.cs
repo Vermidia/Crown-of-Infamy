@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class SupportSkill : Skill
 {
@@ -16,5 +17,16 @@ public class SupportSkill : Skill
             return false;
 
         return true;
+    }
+
+    public override void Resolve(Combantant user, List<Combantant> effected)
+    {
+        if (user is not Boss { } boss)
+        {
+            Debug.LogError($"{this} is not an boss but is using a skill that requires SP!");
+            return;
+        }
+
+        boss.supportPoints -= SupportCost;
     }
 }

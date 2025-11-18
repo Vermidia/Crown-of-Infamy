@@ -1,12 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using TMPro;
-using Unity.Properties;
-using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UIElements;
 
 public class BattleHandler : MonoBehaviour
 {
@@ -16,6 +13,10 @@ public class BattleHandler : MonoBehaviour
     public List<Adventurer> adventurers = new();
 
     public List<Combantant> others = new();
+
+    public List<GameObject> possibleAdventurers = new();
+
+    public List<GameObject> spawnSpot = new();
 
     enum BattleStages
     {
@@ -27,14 +28,40 @@ public class BattleHandler : MonoBehaviour
     BattleStages stage = BattleStages.SelectSkill;
 #nullable enable
     Skill? chosenSkill = null;
+
+    List<Combantant>? possibleTargets = null;
 #nullable disable
 
     List<AttackOrder> orders = new();
 
+    float difficultyDeviation = 0.2f;
+
     void Start()
     {
         PlayerData.TransferStats(boss);
-        PlayerData.RampStats(adventurers);
+
+        char differ = 'A';
+        
+        foreach (var spot in spawnSpot)
+        {
+            //TODO balance parties
+            var adventurer = Instantiate(possibleAdventurers[UnityEngine.Random.Range(0, possibleAdventurers.Count)], spot.transform);
+            var adven = adventurer.GetComponent<Adventurer>();
+            adventurers.Add(adven);
+            adven.differentiator = $"{differ++}";
+        }
+
+        var allocatedInfamy = PlayerData.infamy / (float)adventurers.Count();
+
+        var minInfamy = (int)(allocatedInfamy - Math.Floor(allocatedInfamy * difficultyDeviation));
+
+        var maxInfamy = (int)(allocatedInfamy + Math.Ceiling(allocatedInfamy * difficultyDeviation));
+        
+        foreach(var adv in adventurers)
+        {
+            adv.SetupAdventurer(UnityEngine.Random.Range(minInfamy, maxInfamy + 1));
+        }
+
         NewRound();
     }
 
@@ -91,22 +118,14 @@ public class BattleHandler : MonoBehaviour
     private void CheckTargeting()
     {
         Debug.Log("Skill chosen, targeting check");
-        if ((chosenSkill.targeting ^ Skill.TargetingType.IncludeSelf) == 0)
+
+        if(chosenSkill.DoTargeting(boss, adventurers.ToList<Combantant>(), others, out var possibleTargets))
         {
-            //Only self targeting
-            CreatePlayerAttack(boss);
+            CreatePlayerAttack(possibleTargets);
             return;
         }
 
-        if ((chosenSkill.targeting & Skill.TargetingType.Group) == Skill.TargetingType.Group)
-        {
-            //Group targeting
-            if (chosenSkill.targeting.HasFlag(Skill.TargetingType.Ally))
-                CreatePlayerAttack(others);
-            else
-                CreatePlayerAttack(adventurers.ToList<Combantant>());
-            return;
-        }
+        this.possibleTargets = possibleTargets;
 
         stage = BattleStages.SelectTargeting;
         Debug.Log("Targeting allowed");
@@ -119,39 +138,23 @@ public class BattleHandler : MonoBehaviour
 
         Debug.Log("Validating Target");
 
-        if (target == boss && chosenSkill.targeting.HasFlag(Skill.TargetingType.IncludeSelf))
-        {
+        if(!possibleTargets.Contains(target))
+            return;
             CreatePlayerAttack(target);
-            return;
-        }
-
-        if (chosenSkill.targeting.HasFlag(Skill.TargetingType.Ally))
-        {
-            if (others.Contains(target))
-                CreatePlayerAttack(target);
-            return;
-        }
-        else
-        {
-            if (target is not Adventurer { } enemy)
-                return;
-            
-            if (adventurers.Contains(enemy))
-                CreatePlayerAttack(target);
-            return;
-        }
     }
 
     private void CreatePlayerAttack(Combantant target)
     {
         Debug.Log("Attack Created");
         orders.Add(new AttackOrder(boss, new() { target }, chosenSkill));
+        chosenSkill.currentCooldown = chosenSkill.roundCooldown;
         RunBattle();
     }
 
     private void CreatePlayerAttack(List<Combantant> targets)
     {
         orders.Add(new AttackOrder(boss, targets, chosenSkill));
+        chosenSkill.currentCooldown = chosenSkill.roundCooldown;
         RunBattle();
     }
 
@@ -174,7 +177,12 @@ public class BattleHandler : MonoBehaviour
         Debug.Log("Now resolving moves");
         stage = BattleStages.PlayBattle;
 
-        orders.Sort((x, y) => x.user.speed.CompareTo(y.user.speed));
+        orders.Sort((x, y) => y.user.speed.CompareTo(x.user.speed));
+
+        foreach(var order in orders)
+        {
+            Debug.Log(order.user.GetName());
+        }
 
         DoAttack();
     }
@@ -189,14 +197,14 @@ public class BattleHandler : MonoBehaviour
 
         var attack = orders[0];
 
-        if (!attack.user.IsActive())
+        if (!attack.user.IsActive() || !attack.usedSkill.CheckUse(attack.user))
         {
             orders.Remove(attack);
             DoAttack();
             return;
         }
 
-        attack.usedSkill.Use(attack.user, attack.effected);
+        attack.user.UseSkill(attack.usedSkill, attack.effected);
     }
 
     private void AttackComplete(Combantant fighter)
@@ -232,6 +240,12 @@ public class BattleHandler : MonoBehaviour
             return;
         }
 
+        boss.OnRoundEnd();
+        foreach (var adv in adventurers)
+        {
+            adv.OnRoundEnd();
+        }
+
         boss.turns = boss.maxTurns;
 
         //TODO AI here
@@ -244,7 +258,15 @@ public class BattleHandler : MonoBehaviour
             var skill = adv.CheckAttacks(enemy, allies, out var targets);
 
             if (skill != null)
+            {
                 orders.Add(new AttackOrder(adv, targets, skill));
+                string targetNames = "";
+                foreach (var targ in targets)
+                {
+                    targetNames += targ.GetName() + " ";
+                }
+                Debug.Log($"{adv.GetName()} is using {skill.name} on {targetNames}");
+            }
         }
 
         stage = BattleStages.SelectSkill;

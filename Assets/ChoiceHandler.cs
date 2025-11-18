@@ -36,7 +36,7 @@ public class ChoiceHandler : MonoBehaviour
         var upgrade = buttonToChoice[button];
         upgrade.OnObtain();
         //TODO maybe don't immediately go back to battle
-        SceneManager.LoadScene("BattleScene");
+        SceneManager.LoadScene("SaveScreen");
     }
 
     // Update is called once per frame

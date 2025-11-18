@@ -97,24 +97,4 @@ public static class PlayerData
         boss.skills = skills;
         boss.supportSkills = supportSkills;
     }
-
-//Placeholder for now
-    public static void RampStats(List<Adventurer> adventurers)
-    {
-        foreach (var adv in adventurers)
-        {
-            adv.maxHealth = 20 + infamy * 10;
-            adv.health = adv.maxHealth;
-
-            adv.maxMagicPoints = 2 + infamy * 2;
-            adv.magicPoints = adv.maxMagicPoints;
-
-            adv.power = 5 + infamy * 5;
-            adv.spirit = 2 + infamy * 5;
-
-            adv.speed = 10 + infamy * 5;
-
-            adv.skills = new() { new BasicAttackSkill() { name = "Hit", power = 10, animation = "MeleeAttackSimple" } };
-        }
-    }
 }

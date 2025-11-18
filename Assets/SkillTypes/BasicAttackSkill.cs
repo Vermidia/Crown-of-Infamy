@@ -3,10 +3,11 @@ public class BasicAttackSkill : Skill
 {
     public int power;
 
-    public override void Use(Combantant user, List<Combantant> effected)
+    public override void Resolve(Combantant user, List<Combantant> effected)
     {
-        base.Use(user, effected);
-        int damage = power + user.power; //Combines user and skill power
+        base.Resolve(user, effected);
+        int damage = (power + user.power) * 
+        (user.statusEffects.ContainsKey("Deadly") ? 3 : 1); //Combines user and skill power
 
         foreach (var hit in effected)
         {

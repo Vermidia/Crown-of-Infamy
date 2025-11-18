@@ -75,4 +75,28 @@ public class Boss : Combantant
         base.TakeDamage(damage);
         ui.rootVisualElement.Q<ProgressBar>().value = (((float) health) / maxHealth) * 100;
     }
+
+    public override void OnRoundEnd()
+    {
+        base.OnRoundEnd();
+
+        //Cooldown support
+
+        foreach(var skill in skills)
+        {
+            if (skill.currentCooldown > 0)
+                skill.currentCooldown--;
+        }
+
+        foreach(var supports in supportSkills)
+        {
+            if (supports.currentCooldown > 0)
+                supports.currentCooldown--;
+        }
+    }
+
+    public override string GetName()
+    {
+        return "Player";
+    }
 }
