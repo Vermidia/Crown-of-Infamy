@@ -1,8 +1,10 @@
 :root {
+    margin-top: 0;
+    padding-top: 0;
 }
 
 .unity-progress-bar__progress {
-    background-color: rgb(23, 130, 0);
+    background-color: rgb(26, 144, 0);
 }
 
 .unity-progress-bar__background {

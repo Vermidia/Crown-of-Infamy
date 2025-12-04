@@ -1,0 +1,5 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/supportBar.uss?fileID=7433441132597879392&amp;guid=4143c39197e24c54b9377f7f0775f2fc&amp;type=3#supportBar[UNSUPPORTED_IN_UI_BUILDER]" />
+    <ui:Label text="Support" style="-unity-text-align: upper-center; color: rgb(255, 255, 255); font-size: 9px;" />
+    <ui:ProgressBar name="Health" />
+</ui:UXML>

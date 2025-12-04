@@ -8,7 +8,7 @@ public class Adventurer : Combantant
     public int maxMagicPoints;
     public int magicPoints;
 
-    public void Start()
+    void Start()
     {
     }
 
@@ -38,6 +38,7 @@ public class Adventurer : Combantant
         speed = 10 + infamyAllocation * 5;
 
         skills = new() { new BasicAttackSkill() { name = "BasicHit", power = 10, animation = "MeleeAttackSimple" } };
+        InitialStatus();
     }
 
 #nullable enable

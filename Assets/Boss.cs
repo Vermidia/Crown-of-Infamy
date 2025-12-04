@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using TMPro;
 using Unity.Properties;
 using UnityEngine.UIElements;
+using System;
 
 public class Boss : Combantant
 {
@@ -20,9 +21,14 @@ public class Boss : Combantant
 
     public UIDocument ui;
 
+    public UIDocument support;
+
     public void Start()
     {
+        differentiator = "boss";
         ui.rootVisualElement.Q<ProgressBar>().value = 100;
+        support.rootVisualElement.Q<ProgressBar>().value = 100;
+        
         if (skills.Count != 0)
         {
 
@@ -37,7 +43,7 @@ public class Boss : Combantant
             skillUI.AddOptions(options);
         }
         else
-            skillUI.interactable = false;
+            skillUI.gameObject.SetActive(false);
 
         if (supportSkills.Count != 0)
         {
@@ -52,12 +58,16 @@ public class Boss : Combantant
             supportUI.AddOptions(sOptions);
         }
         else
-            supportUI.interactable = false;
+            supportUI.gameObject.SetActive(false);
+
+        InitialStatus();
     }
 #nullable enable
-    public bool ValidateSkill(string skill, out Skill? foundSkill)
+    public bool ValidateSkill(string skill, out Skill? foundSkill, out string reason)
     {
         foundSkill = null;
+        reason = string.Empty;
+
         if (skills.Find(x => x.name == skill) is { } classicSkill)
             foundSkill = classicSkill;
         else if (supportSkills.Find(x => x.name == skill) is { } supportSkill)
@@ -65,7 +75,9 @@ public class Boss : Combantant
         else
             return false;
 
-        return foundSkill.CheckUse(this);
+        var found = foundSkill.CheckUse(this, out reason);
+
+        return found;
 
     }
 #nullable disable
@@ -76,27 +88,45 @@ public class Boss : Combantant
         ui.rootVisualElement.Q<ProgressBar>().value = (((float) health) / maxHealth) * 100;
     }
 
+    public override void HealDamage(int heal)
+    {
+        base.HealDamage(heal);
+        ui.rootVisualElement.Q<ProgressBar>().value = (((float) health) / maxHealth) * 100;
+    }
+
+    public void ChangeSupportPoints()
+    {
+        support.rootVisualElement.Q<ProgressBar>().value = (((float) supportPoints) / maxSupportPoints) * 100;
+    }
+
     public override void OnRoundEnd()
     {
         base.OnRoundEnd();
 
         //Cooldown support
+        int cooldownReducer = passives.Contains("No Escape") ? 2 : 1;
 
         foreach(var skill in skills)
         {
             if (skill.currentCooldown > 0)
-                skill.currentCooldown--;
+                skill.currentCooldown = Math.Max(0, skill.currentCooldown - cooldownReducer);
         }
 
         foreach(var supports in supportSkills)
         {
             if (supports.currentCooldown > 0)
-                supports.currentCooldown--;
+                supports.currentCooldown = Math.Max(0, supports.currentCooldown - cooldownReducer);
+        }
+
+        if(passives.Contains("Immovable"))
+        {
+            supportPoints = Math.Min(maxSupportPoints, supportPoints / 20);
+            ChangeSupportPoints();
         }
     }
 
     public override string GetName()
     {
-        return "Player";
+        return "Boss";
     }
 }

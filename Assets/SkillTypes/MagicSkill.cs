@@ -5,9 +5,9 @@ public class MagicSkill : Skill
 {
     public int MagicCost = 0;
 
-    public override bool CheckUse(Combantant user)
+    public override bool CheckUse(Combantant user, out string reason, bool checkCooldown = false)
     {
-        if (!base.CheckUse(user))
+        if (!base.CheckUse(user, out reason, checkCooldown))
             return false;
 
         if (user is not Adventurer { } adventurer)
@@ -28,5 +28,6 @@ public class MagicSkill : Skill
         }
 
         adventurer.magicPoints -= MagicCost;
+        base.Resolve(user, effected);
     }
 }

@@ -6,12 +6,15 @@ public class Upgrade
 
     public string description;
 
-    public int neededInfamy = 0;
+    public int neededInfamyLevel = 1;
+
+    public bool visibleUpgrade = true;
 
     public List<string> requirements = new();
 
     public virtual void OnObtain()
     {
-        PlayerData.upgrades.Add(name);
+        if (visibleUpgrade)
+            PlayerData.upgrades.Add(name);
     }
 }

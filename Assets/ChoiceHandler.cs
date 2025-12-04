@@ -15,8 +15,15 @@ public class ChoiceHandler : MonoBehaviour
     public Dictionary<GameObject, Upgrade> buttonToChoice = new();
     void Start()
     {
-        ui.rootVisualElement.Q<ProgressBar>().value = ((float)PlayerData.infamy / PlayerData.nextInfamyLevel) * 100;
-        var upgrades = PlayerData.GetPossibleUpgrades();
+        ui.rootVisualElement.Q<ProgressBar>().value = ((float)PlayerData.InfamyAtCurrentLevel() / 10) * 100;
+        List<Upgrade> upgrades;
+        if(PlayerData.lastInfamyLevel < PlayerData.InfamyLevel())
+        {
+            PlayerData.lastInfamyLevel = PlayerData.InfamyLevel();
+            upgrades = PlayerData.GetPossibleUpgrades(true);
+        }
+        else
+            upgrades = PlayerData.GetPossibleUpgrades();
 
         foreach (var button in buttons)
         {

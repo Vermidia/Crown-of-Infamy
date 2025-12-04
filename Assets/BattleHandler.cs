@@ -18,6 +18,24 @@ public class BattleHandler : MonoBehaviour
 
     public List<GameObject> spawnSpot = new();
 
+    public Timeline timeline;
+
+    public List<Combantant> lastOrder = new();
+
+    public TextMeshProUGUI battleLog;
+
+    public TextMeshProUGUI playerHelper;
+
+    public TextMeshProUGUI roundTracker;
+
+    public Light mainLight;
+
+    public int roundNumber = 0;
+
+    public AudioSource audioSource;
+
+    public AudioSource buttonSuccess;
+
     enum BattleStages
     {
         SelectSkill,
@@ -51,11 +69,30 @@ public class BattleHandler : MonoBehaviour
             adven.differentiator = $"{differ++}";
         }
 
-        var allocatedInfamy = PlayerData.infamy / (float)adventurers.Count();
+        var allocatedInfamy = PlayerData.infamy;
 
         var minInfamy = (int)(allocatedInfamy - Math.Floor(allocatedInfamy * difficultyDeviation));
 
         var maxInfamy = (int)(allocatedInfamy + Math.Ceiling(allocatedInfamy * difficultyDeviation));
+
+        if(allocatedInfamy < 10)
+        {
+            mainLight.colorTemperature = 20000;
+            mainLight.intensity = 2;
+            mainLight.color = Color.white;
+        }
+        else if(allocatedInfamy < 20)
+        {
+            mainLight.colorTemperature = 20000;
+            mainLight.intensity = 1;
+            mainLight.color = Color.cyan;
+        }
+        else
+        {
+            mainLight.colorTemperature = 1500;
+            mainLight.intensity = 5;
+            mainLight.color = Color.white;
+        }
         
         foreach(var adv in adventurers)
         {
@@ -91,10 +128,14 @@ public class BattleHandler : MonoBehaviour
 
         var skillName = dropdown.options[dropdown.value].text;
         dropdown.value = 0;
-        if (!boss.ValidateSkill(skillName, out var skill))
+        if (!boss.ValidateSkill(skillName, out var skill, out var reason))
+        {
+            playerHelper.text = reason;
             return;
+        }
 
         chosenSkill = skill;
+        buttonSuccess.Play();
         CheckTargeting();
     }
 
@@ -108,16 +149,20 @@ public class BattleHandler : MonoBehaviour
 
         var skillName = dropdown.options[dropdown.value].text;
         dropdown.value = 0;
-        if (!boss.ValidateSkill(skillName, out var skill))
+        if (!boss.ValidateSkill(skillName, out var skill, out var reason))
+        {
+            playerHelper.text = reason;
             return;
+        }
 
         chosenSkill = skill;
+        buttonSuccess.Play();
         CheckTargeting();
     }
 
     private void CheckTargeting()
     {
-        Debug.Log("Skill chosen, targeting check");
+        //Debug.Log("Skill chosen, targeting check");
 
         if(chosenSkill.DoTargeting(boss, adventurers.ToList<Combantant>(), others, out var possibleTargets))
         {
@@ -128,7 +173,8 @@ public class BattleHandler : MonoBehaviour
         this.possibleTargets = possibleTargets;
 
         stage = BattleStages.SelectTargeting;
-        Debug.Log("Targeting allowed");
+        playerHelper.text = "Select Target(s)";
+        //Debug.Log("Targeting allowed");
     }
 
     public void TargetSelected(Combantant target)
@@ -136,16 +182,18 @@ public class BattleHandler : MonoBehaviour
         if (stage != BattleStages.SelectTargeting)
             return;
 
-        Debug.Log("Validating Target");
+        //Debug.Log("Validating Target");
 
         if(!possibleTargets.Contains(target))
             return;
-            CreatePlayerAttack(target);
+
+        buttonSuccess.Play();
+        CreatePlayerAttack(target);
     }
 
     private void CreatePlayerAttack(Combantant target)
     {
-        Debug.Log("Attack Created");
+        //Debug.Log("Attack Created");
         orders.Add(new AttackOrder(boss, new() { target }, chosenSkill));
         chosenSkill.currentCooldown = chosenSkill.roundCooldown;
         RunBattle();
@@ -167,21 +215,23 @@ public class BattleHandler : MonoBehaviour
             return;
         }
 
-        Debug.Log("Turns remaining, select skill");
+        //Debug.Log("Turns remaining, select skill");
         //Still has turns, next one
         stage = BattleStages.SelectSkill;
+        playerHelper.text = $"Select a Skill, {(boss.maxTurns - boss.turns) + 1}!" ;
     }
 
     private void ResolveBattle()
     {
-        Debug.Log("Now resolving moves");
+        //Debug.Log("Now resolving moves");
         stage = BattleStages.PlayBattle;
+        playerHelper.text = "Watch and learn...";
 
-        orders.Sort((x, y) => y.user.speed.CompareTo(x.user.speed));
+        orders.Sort((x, y) => y.user.GetSpeed().CompareTo(x.user.GetSpeed()));
 
         foreach(var order in orders)
         {
-            Debug.Log(order.user.GetName());
+            //Debug.Log(order.user.GetName());
         }
 
         DoAttack();
@@ -197,7 +247,12 @@ public class BattleHandler : MonoBehaviour
 
         var attack = orders[0];
 
-        if (!attack.user.IsActive() || !attack.usedSkill.CheckUse(attack.user))
+        if(!lastOrder.Contains(attack.user))
+            lastOrder.Add(attack.user);
+
+        //Cannot do a move under the effects of fear
+        if (!attack.user.IsActive() || !attack.usedSkill.CheckUse(attack.user, out _, false) 
+        || attack.user.statusEffects.ContainsKey("Fear"))
         {
             orders.Remove(attack);
             DoAttack();
@@ -205,6 +260,8 @@ public class BattleHandler : MonoBehaviour
         }
 
         attack.user.UseSkill(attack.usedSkill, attack.effected);
+        //Debug.Log($"{attack.user.GetName()} used {attack.usedSkill.name}!");
+        battleLog.text = $"{attack.user.GetName()} used {attack.usedSkill.name}!";
     }
 
     private void AttackComplete(Combantant fighter)
@@ -224,17 +281,32 @@ public class BattleHandler : MonoBehaviour
         DoAttack();
     }
 
+    private void RoundTrackerUpdate()
+    {
+        //TODO tick tock sounds for those abilities
+        roundTracker.text = "Round " + roundNumber;
+    }
+
     private void NewRound()
     {
-        Debug.Log("New round started");
+        roundNumber++;
+        RoundTrackerUpdate();
+        //Debug.Log("New round started");
         if (adventurers.All(x => x.health <= 0))
         {
-            //TODO make infamy gained variable
-            PlayerData.infamy++;
-            SceneManager.LoadScene("VictoryScene");
+            PlayerData.infamy += 2 * PlayerData.difficultyMultiplier;
+            if(PlayerData.InfamyLevel() >= 4)
+            {
+                //Victory
+                SceneManager.LoadScene("FinaleScene");
+                return;
+            }
+            else
+                SceneManager.LoadScene("VictoryScene");
             return;
         }
-        else if (boss.health <= 0)
+        else if (boss.health <= 0 || (boss.passives.Contains("Tick Tock") && roundNumber > 5)
+        || (boss.passives.Contains("No Time") && roundNumber > 3))
         {
             SceneManager.LoadScene("GameOver");
             return;
@@ -248,7 +320,21 @@ public class BattleHandler : MonoBehaviour
 
         boss.turns = boss.maxTurns;
 
-        //TODO AI here
+        if(boss.passives.Contains("Tick Tock"))
+            audioSource.Play();
+
+        //Make list for timeline
+
+        List<string> timings = new();
+
+        foreach (var order in lastOrder)
+        {
+            timings.Add(order.differentiator);
+        }
+
+        timeline.UpdateTimeline(timings);
+        lastOrder.Clear();
+
         var enemy = new List<Combantant> { boss };
         enemy.AddRange(others);
         foreach (var adv in adventurers)
@@ -265,11 +351,12 @@ public class BattleHandler : MonoBehaviour
                 {
                     targetNames += targ.GetName() + " ";
                 }
-                Debug.Log($"{adv.GetName()} is using {skill.name} on {targetNames}");
+                //Debug.Log($"{adv.GetName()} is using {skill.name} on {targetNames}");
             }
         }
 
         stage = BattleStages.SelectSkill;
+        playerHelper.text = "Select a Skill";
     }
 
 }

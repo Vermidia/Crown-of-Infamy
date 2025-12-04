@@ -10,7 +10,6 @@ public class MagicAttackSkill : MagicSkill
 
     public override void Resolve(Combantant user, List<Combantant> effected)
     {
-        base.Resolve(user, effected);
         int damage = GetCalculatedPower(user); //Combines user and  the user's spirit/power
 
         foreach (var hit in effected)
@@ -23,6 +22,6 @@ public class MagicAttackSkill : MagicSkill
 
     public int GetCalculatedPower(Combantant user)
     {
-        return power + (usesSpirit ? user.spirit : user.power) * (user.statusEffects.ContainsKey("Deadly") ? 3 : 1);
+        return power + (usesSpirit ? user.spirit : user.power) * (user.statusEffects.ContainsKey("Deadly") ? 3 : 1) * (user.statusEffects.ContainsKey("Fiesty") ? 2 : 1);
     }
 }

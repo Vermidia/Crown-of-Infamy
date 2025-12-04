@@ -6,36 +6,40 @@ public class HealerAdventurer : Adventurer
 {
     public override void SetupAdventurer(int infamyAllocation)
     {
-            maxHealth = 20 + infamyAllocation * 10;
+            maxHealth = 5 + infamyAllocation * 7;
 
-            maxMagicPoints = 20 + infamyAllocation * 5;
+            maxMagicPoints = 20 + infamyAllocation * 7;
 
             power = 1 + infamyAllocation * 2;
-            spirit = 3 + infamyAllocation * 3;
+            spirit = 1 + (int)(infamyAllocation * 1.5f);
 
             speed = 5 + infamyAllocation * 7;
 
             skills = new(){
-                new MagicAttackSkill() { name = "Staff Swing", power = 5, usesSpirit = false, animation = "MeleeAttackSimple", tags = {"Attack"}},
+                new MagicAttackSkill() { name = "Staff Swing", power = 5, usesSpirit = false, animation = "MeleeAttackSimple", sound = "Melee", tags = {"Attack"}},
                 new MagicBuffSkill() {name = "Guard Stance", targeting = Skill.TargetingType.IncludeSelf, givenStatuses = new(){("Guard", 1)}, animation = "Guard", tags = {"Defense"}}
             };
 
-            if (infamyAllocation >= 100)
+            if(infamyAllocation >= 10)
             {
-                skills.Add(new HealSkillAdv{ name = "Angel Light", healPower = 100, MagicCost = 100, animation = "MagicCast", tags = {"Heal", "Single"}, targeting = Skill.TargetingType.Ally | Skill.TargetingType.IncludeSelf});
-                //TODO buffing skill?
-                skills.Add(new MagicAttackSkill {name = "Sun Ray", power = 50, MagicCost = 25, animation = "MagicCast", tags = {"Attack"}});
-            }
-            else if(infamyAllocation >= 10)
-            {
-                skills.Add(new HealSkillAdv{ name = "Prayer", healPower = 50, MagicCost = 20, animation = "MagicCast", tags = {"Heal", "Single"}, targeting = Skill.TargetingType.Ally | Skill.TargetingType.IncludeSelf});
-                skills.Add(new HealSkillAdv{ name = "Sooth", healPower = 10, MagicCost = 50, animation = "MagicCast", tags = {"Heal", "Group"}, targeting = Skill.TargetingType.Ally | Skill.TargetingType.Group | Skill.TargetingType.IncludeSelf});
+                skills.Add(new HealSkillAdv{ name = "Prayer", healPower = 50, MagicCost = 20, animation = "MagicCast", sound = "Heal", tags = {"Heal", "Single"}, targeting = Skill.TargetingType.Ally | Skill.TargetingType.IncludeSelf});
+                skills.Add(new HealSkillAdv{ name = "Sooth", healPower = 10, MagicCost = 50, animation = "MagicCast", sound = "Heal", tags = {"Heal", "Group"}, targeting = Skill.TargetingType.Ally | Skill.TargetingType.Group | Skill.TargetingType.IncludeSelf});
+                spirit += 10;
             }
 
-            skills.Add(new HealSkillAdv{ name = "Blessing", healPower = 10, MagicCost = 10, animation = "MagicCast", tags = {"Heal", "Single"}, targeting = Skill.TargetingType.Ally | Skill.TargetingType.IncludeSelf});
+            if (infamyAllocation >= 20)
+            {
+                skills.Add(new HealSkillAdv{ name = "Angel Light", healPower = 100, MagicCost = 30, animation = "MagicCast", sound = "Heal", tags = {"Heal", "Single"}, targeting = Skill.TargetingType.Ally | Skill.TargetingType.IncludeSelf});
+                skills.Add(new MagicAttackSkill {name = "Sun Ray", power = 50, MagicCost = 25, animation = "MagicCast", sound = "MagicAttack", tags = {"Attack"}});
+                health += 100;
+                spirit += 20;
+            }
+
+            skills.Add(new HealSkillAdv{ name = "Blessing", healPower = 10, MagicCost = 10, animation = "MagicCast", sound = "Heal", tags = {"Heal", "Single"}, targeting = Skill.TargetingType.Ally | Skill.TargetingType.IncludeSelf});
 
             health = maxHealth;
             magicPoints = maxMagicPoints;
+            InitialStatus();
     }
     #nullable enable
     public override Skill? CheckAttacks(List<Combantant> enemies, List<Combantant> allies, out List<Combantant>? targets)
@@ -46,7 +50,7 @@ public class HealerAdventurer : Adventurer
 
         foreach (var skill in skills)
         {
-            if (skill.CheckUse(this))
+            if (skill.CheckUse(this, out _))
                 continue;
             
             usableSkills.Remove(skill);
@@ -66,7 +70,7 @@ public class HealerAdventurer : Adventurer
 
         bool activeHealers = fasterHealers.Count() > 0;
 
-        var guardSkillsMarked = usableSkills.Where(x => x.tags.Contains("Defense")).ToList();;
+        var guardSkillsMarked = usableSkills.Where(x => x.tags.Contains("Defense")).ToList();
         List<MagicBuffSkill> guardSkills = new();
 
         foreach (var guard in guardSkillsMarked)
@@ -204,7 +208,7 @@ public class HealerAdventurer : Adventurer
         healTargets = null;
         if (skill.DoTargeting(this, enemies, allies, out var possibleTargets))
         {
-            healTargets = possibleTargets;
+            healTargets = possibleTargets.ToList();
             foreach(var targ in possibleTargets)
             {
                 if(targ.IsActive())
@@ -248,6 +252,6 @@ public class HealerAdventurer : Adventurer
 
     public override string GetName()
     {
-        return "Healer" + base.GetName();
+        return "Healer " + base.GetName();
     }
 }

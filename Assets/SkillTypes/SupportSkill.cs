@@ -5,16 +5,19 @@ public class SupportSkill : Skill
 {
     public int SupportCost = 0;
 
-    public override bool CheckUse(Combantant user)
+    public override bool CheckUse(Combantant user, out string reason, bool checkCooldown = false)
     {
-        if (!base.CheckUse(user))
+        if (!base.CheckUse(user, out reason, checkCooldown))
             return false;
 
         if (user is not Boss { } boss)
             return false;
         
         if (SupportCost > boss.supportPoints)
+        {
+            reason = $"{name} costs too much SP!";
             return false;
+        }
 
         return true;
     }
@@ -27,6 +30,8 @@ public class SupportSkill : Skill
             return;
         }
 
-        boss.supportPoints -= SupportCost;
+        boss.supportPoints -=  user.passives.Contains("Tick Tock") ? 0 : SupportCost;
+        boss.ChangeSupportPoints();
+        base.Resolve(user, effected);
     }
 }

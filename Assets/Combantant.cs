@@ -29,16 +29,31 @@ public class Combantant : MonoBehaviour
 
     public Dictionary<string, int> statusEffects = new();
 
+    public List<string> passives = new();
+
     public ParticleSystem hurt;
     public ParticleSystem heal;
     public ParticleSystem debuff;
     public ParticleSystem buff;
+
+    public AudioSource audioSource;
 
     public string differentiator;
 
     void Start()
     {
 
+    }
+
+    public void InitialStatus()
+    {
+        if(passives.Contains("First Blood"))
+            statusEffects.Add("First Blood", 2);
+    }
+
+    public int GetSpeed()
+    {
+        return (int)((speed + (statusEffects.ContainsKey("First Blood") ? 5000 : 0)) * (statusEffects.ContainsKey("Sluggish") ? 0.5f : 1));
     }
 
     void OnMouseUpAsButton()
@@ -48,8 +63,8 @@ public class Combantant : MonoBehaviour
 
     void OnAttackComplete()
     {
-        SendMessageUpwards("AttackComplete", this);
         GetComponent<Animator>().Play("Idle");
+        SendMessageUpwards("AttackComplete", this);    
     }
 
     //Does not reset animation
@@ -70,10 +85,24 @@ public class Combantant : MonoBehaviour
         if(statusEffects.ContainsKey("Guard"))
             damage /= 2;
         
-        health = Math.Max(0, health - damage);
-        hurt.Play();
+        if(health > 0)
+        {
+            health = Math.Max(0, health - damage);
+            hurt.Play();
+        }
+
         if(health <= 0)
-            GetComponent<Animator>().Play("Downed");
+        {
+            if(!passives.Contains("Twin Lives"))
+                GetComponent<Animator>().Play("Downed");
+            else
+            {
+                heal.Play();
+                passives.Remove("Twin Lives");
+                PlayerData.passives.Remove("Twin Lives");
+                health = maxHealth / 2;
+            }
+        }
     }
 
     public virtual void HealDamage(int heal)
@@ -81,7 +110,7 @@ public class Combantant : MonoBehaviour
         if(!IsActive()) //No heal on downed
             return;
         
-        health = Math.Min(maxHealth, health + heal);
+        health = Math.Min(maxHealth, health + (int)(heal * (statusEffects.ContainsKey("Curse") ? 0.5f : 1)));
         this.heal.Play();
     }
 

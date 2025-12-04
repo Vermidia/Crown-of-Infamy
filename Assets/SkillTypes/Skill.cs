@@ -2,14 +2,16 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Mono.Cecil;
+using UnityEngine.Audio;
 
 public class Skill
 {
     public string name;
 
-    public string id;
-
     public int roundCooldown = 0;
+
+    public int startingCooldown = 0;
 
     public int currentCooldown = 0;
 
@@ -31,10 +33,16 @@ public class Skill
         Enemy = 8,
     }
 
-    public virtual bool CheckUse(Combantant user)
+    public string sound = string.Empty;
+
+    public virtual bool CheckUse(Combantant user, out string reason, bool checkCooldown = true)
     {
-        if (currentCooldown > 0)
+        reason = string.Empty;
+        if (checkCooldown && currentCooldown > 0)
+        {
+            reason = $"{name} is on cooldown for {currentCooldown} more round(s)!";
             return false;
+        }
 
         return true;
     }
@@ -46,7 +54,11 @@ public class Skill
             Debug.LogError($"Missing Animator Component on {user}!");
             user.ErrorAttackComplete();
         }
-
+        if(sound != string.Empty)
+        {
+            user.audioSource.resource = Resources.Load<AudioResource>($"Sounds/{sound}");
+            user.audioSource.pitch = UnityEngine.Random.Range(0.8f,1.2f);
+        }
         animator.Play(animation);
     }
 
@@ -88,6 +100,19 @@ public class Skill
 
     public virtual void Resolve(Combantant user, List<Combantant> effected)
     {
-        
+        if(sound != string.Empty)
+        {
+            user.audioSource.Play();
+        }
+    }
+
+    protected void Statuslogic(Combantant hit, (string, int) status, bool buff)
+    {
+        if(hit.statusEffects.ContainsKey(status.Item1))
+            hit.statusEffects[status.Item1] = Math.Max(hit.statusEffects[status.Item1], status.Item2);
+        else
+            hit.statusEffects.Add(status.Item1, status.Item2);
+
+        hit.ReceiveStatus(buff);
     }
 }
